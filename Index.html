@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Task Manager Pro</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+
+.column{
+min-height:300px;
+}
+
+.task{
+cursor:grab;
+}
+
+</style>
+
+</head>
+
+<body class="bg-slate-100 min-h-screen p-6" id="body">
+
+<div class="max-w-7xl mx-auto">
+
+<div class="flex justify-between items-center mb-6">
+
+<h1 class="text-2xl font-bold">Task Manager Pro</h1>
+
+<div class="flex gap-2">
+
+<button onclick="toggleView()"
+class="bg-blue-600 text-white px-3 py-2 rounded">
+Toggle View
+</button>
+
+<button onclick="toggleDark()"
+class="bg-slate-700 text-white px-3 py-2 rounded">
+Dark Mode
+</button>
+
+<button onclick="addTask()"
+class="bg-green-600 text-white px-3 py-2 rounded">
+New Task
+</button>
+
+</div>
+
+</div>
+
+<div class="flex gap-3 mb-6 flex-wrap">
+
+<input id="search"
+placeholder="Search tasks..."
+class="border rounded px-3 py-2 w-64">
+
+<select id="filter"
+class="border rounded px-3 py-2">
+
+<option value="All">All Status</option>
+<option>Incomplete</option>
+<option>In Progress</option>
+<option>Completed</option>
+<option>Needs Action</option>
+
+</select>
+
+</div>
+
+<div id="listView" class="space-y-3"></div>
+
+<div id="boardView" class="grid md:grid-cols-4 gap-4 hidden">
+
+<div class="bg-white rounded shadow p-3 column"
+data-status="Incomplete">
+<h2 class="font-bold mb-2">Incomplete</h2>
+</div>
+
+<div class="bg-white rounded shadow p-3 column"
+data-status="In Progress">
+<h2 class="font-bold mb-2">In Progress</h2>
+</div>
+
+<div class="bg-white rounded shadow p-3 column"
+data-status="Needs Action">
+<h2 class="font-bold mb-2">Needs Action</h2>
+</div>
+
+<div class="bg-white rounded shadow p-3 column"
+data-status="Completed">
+<h2 class="font-bold mb-2">Completed</h2>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let tasks = JSON.parse(localStorage.getItem("tasks")) || []
+let boardMode = false
+
+const listView=document.getElementById("listView")
+const boardView=document.getElementById("boardView")
+const search=document.getElementById("search")
+const filter=document.getElementById("filter")
+
+function save(){
+localStorage.setItem("tasks",JSON.stringify(tasks))
+}
+
+function addTask(){
+
+tasks.push({
+id:Date.now(),
+task:"New Task",
+status:"Incomplete",
+priority:"Low",
+due:"",
+notes:""
+})
+
+save()
+render()
+
+}
+
+function createTaskCard(t){
+
+let card=document.createElement("div")
+card.className="task bg-white p-3 rounded shadow mb-2"
+card.draggable=true
+card.dataset.id=t.id
+
+card.innerHTML=`
+
+<input value="${t.task}"
+class="border rounded px-2 py-1 w-full mb-1">
+
+<div class="grid grid-cols-3 gap-1 text-sm">
+
+<select class="border rounded status">
+
+<option ${t.status=="Incomplete"?"selected":""}>Incomplete</option>
+<option ${t.status=="In Progress"?"selected":""}>In Progress</option>
+<option ${t.status=="Needs Action"?"selected":""}>Needs Action</option>
+<option ${t.status=="Completed"?"selected":""}>Completed</option>
+
+</select>
+
+<select class="border rounded priority">
+
+<option ${t.priority=="Low"?"selected":""}>Low</option>
+<option ${t.priority=="Medium"?"selected":""}>Medium</option>
+<option ${t.priority=="High"?"selected":""}>High</option>
+
+</select>
+
+<input type="date" value="${t.due}" class="border rounded">
+
+</div>
+
+<button class="bg-red-500 text-white px-2 py-1 mt-2 rounded delete">
+Delete
+</button>
+
+`
+
+let inputs=card.querySelectorAll("input")
+let selects=card.querySelectorAll("select")
+
+inputs[0].onchange=e=>{
+t.task=e.target.value
+save()
+}
+
+inputs[1].onchange=e=>{
+t.due=e.target.value
+save()
+}
+
+selects[0].onchange=e=>{
+t.status=e.target.value
+save()
+render()
+}
+
+selects[1].onchange=e=>{
+t.priority=e.target.value
+save()
+}
+
+card.querySelector(".delete").onclick=()=>{
+tasks=tasks.filter(x=>x.id!=t.id)
+save()
+render()
+}
+
+card.addEventListener("dragstart",e=>{
+e.dataTransfer.setData("id",t.id)
+})
+
+return card
+
+}
+
+function render(){
+
+listView.innerHTML=""
+document.querySelectorAll(".column").forEach(c=>{
+c.innerHTML=`<h2 class="font-bold mb-2">${c.dataset.status}</h2>`
+})
+
+let s=search.value.toLowerCase()
+
+tasks
+.filter(t=>{
+
+let searchMatch=t.task.toLowerCase().includes(s)
+let filterMatch=filter.value=="All" || t.status==filter.value
+
+return searchMatch && filterMatch
+
+})
+.forEach(t=>{
+
+let card=createTaskCard(t)
+
+if(boardMode){
+
+let col=document.querySelector(`[data-status="${t.status}"]`)
+col.appendChild(card)
+
+}
+else{
+
+listView.appendChild(card)
+
+}
+
+})
+
+}
+
+function toggleView(){
+
+boardMode=!boardMode
+
+if(boardMode){
+
+listView.classList.add("hidden")
+boardView.classList.remove("hidden")
+
+}
+else{
+
+boardView.classList.add("hidden")
+listView.classList.remove("hidden")
+
+}
+
+render()
+
+}
+
+function toggleDark(){
+
+let body=document.getElementById("body")
+
+body.classList.toggle("bg-slate-900")
+body.classList.toggle("bg-slate-100")
+
+}
+
+document.querySelectorAll(".column").forEach(col=>{
+
+col.addEventListener("dragover",e=>e.preventDefault())
+
+col.addEventListener("drop",e=>{
+
+let id=e.dataTransfer.getData("id")
+
+let task=tasks.find(t=>t.id==id)
+
+task.status=col.dataset.status
+
+save()
+render()
+
+})
+
+})
+
+search.oninput=render
+filter.onchange=render
+
+render()
+
+</script>
+
+</body>
+</html>
