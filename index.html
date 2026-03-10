@@ -2,302 +2,157 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Task Manager Pro</title>
-
+<title>Time-Based Task Manager</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
 <style>
-
-.column{
-min-height:300px;
-}
-
-.task{
-cursor:grab;
-}
-
+.column{min-height:300px;}
+.task{cursor:grab;}
+.tab-btn{transition: all 0.2s; padding:0.5rem 1rem; border-radius:0.25rem;}
+.tab-btn.active{background-color:#3b82f6;color:white;font-weight:bold;}
 </style>
-
 </head>
-
 <body class="bg-slate-100 min-h-screen p-6" id="body">
-
 <div class="max-w-7xl mx-auto">
 
-<div class="flex justify-between items-center mb-6">
-
-<h1 class="text-2xl font-bold">Task Manager Pro</h1>
-
-<div class="flex gap-2">
-
-<button onclick="toggleView()"
-class="bg-blue-600 text-white px-3 py-2 rounded">
-Toggle View
-</button>
-
-<button onclick="toggleDark()"
-class="bg-slate-700 text-white px-3 py-2 rounded">
-Dark Mode
-</button>
-
-<button onclick="addTask()"
-class="bg-green-600 text-white px-3 py-2 rounded">
-New Task
-</button>
-
+<!-- Tabs -->
+<div class="flex gap-2 mb-4" id="tabContainer">
+  <button class="tab-btn active" onclick="switchTab('Today')">Today</button>
+  <button class="tab-btn" onclick="switchTab('Tomorrow')">Tomorrow</button>
+  <button class="tab-btn" onclick="switchTab('Next Week')">Next Week</button>
 </div>
 
+<div class="flex justify-between items-center mb-6">
+<h1 class="text-2xl font-bold">Time-Based Task Manager</h1>
+<div class="flex gap-2">
+<button onclick="toggleView()" class="bg-blue-600 text-white px-3 py-2 rounded">Toggle View</button>
+<button onclick="toggleDark()" class="bg-slate-700 text-white px-3 py-2 rounded">Dark Mode</button>
+<button onclick="addTask()" class="bg-green-600 text-white px-3 py-2 rounded">New Task</button>
+</div>
 </div>
 
 <div class="flex gap-3 mb-6 flex-wrap">
-
-<input id="search"
-placeholder="Search tasks..."
-class="border rounded px-3 py-2 w-64">
-
-<select id="filter"
-class="border rounded px-3 py-2">
-
+<input id="search" placeholder="Search tasks..." class="border rounded px-3 py-2 w-64">
+<select id="filter" class="border rounded px-3 py-2">
 <option value="All">All Status</option>
 <option>Incomplete</option>
 <option>In Progress</option>
-<option>Completed</option>
 <option>Needs Action</option>
-
+<option>Completed</option>
 </select>
-
 </div>
 
 <div id="listView" class="space-y-3"></div>
-
 <div id="boardView" class="grid md:grid-cols-4 gap-4 hidden">
-
-<div class="bg-white rounded shadow p-3 column"
-data-status="Incomplete">
-<h2 class="font-bold mb-2">Incomplete</h2>
+<div class="bg-white rounded shadow p-3 column" data-status="Incomplete"><h2 class="font-bold mb-2">Incomplete</h2></div>
+<div class="bg-white rounded shadow p-3 column" data-status="In Progress"><h2 class="font-bold mb-2">In Progress</h2></div>
+<div class="bg-white rounded shadow p-3 column" data-status="Needs Action"><h2 class="font-bold mb-2">Needs Action</h2></div>
+<div class="bg-white rounded shadow p-3 column" data-status="Completed"><h2 class="font-bold mb-2">Completed</h2></div>
 </div>
-
-<div class="bg-white rounded shadow p-3 column"
-data-status="In Progress">
-<h2 class="font-bold mb-2">In Progress</h2>
-</div>
-
-<div class="bg-white rounded shadow p-3 column"
-data-status="Needs Action">
-<h2 class="font-bold mb-2">Needs Action</h2>
-</div>
-
-<div class="bg-white rounded shadow p-3 column"
-data-status="Completed">
-<h2 class="font-bold mb-2">Completed</h2>
-</div>
-
-</div>
-
 </div>
 
 <script>
+// ===== DATA =====
+let tasks = JSON.parse(localStorage.getItem('tasks')||'[]');
+let currentTab = 'Today';
+let boardMode = false;
 
-let tasks = JSON.parse(localStorage.getItem("tasks")) || []
-let boardMode = false
+// ===== STORAGE =====
+function saveTasks(){ localStorage.setItem('tasks', JSON.stringify(tasks)); }
 
-const listView=document.getElementById("listView")
-const boardView=document.getElementById("boardView")
-const search=document.getElementById("search")
-const filter=document.getElementById("filter")
-
-function save(){
-localStorage.setItem("tasks",JSON.stringify(tasks))
-}
-
-function addTask(){
-
-tasks.push({
-id:Date.now(),
-task:"New Task",
-status:"Incomplete",
-priority:"Low",
-due:"",
-notes:""
-})
-
-save()
-render()
-
-}
-
-function createTaskCard(t){
-
-let card=document.createElement("div")
-card.className="task bg-white p-3 rounded shadow mb-2"
-card.draggable=true
-card.dataset.id=t.id
-
-card.innerHTML=`
-
-<input value="${t.task}"
-class="border rounded px-2 py-1 w-full mb-1">
-
-<div class="grid grid-cols-3 gap-1 text-sm">
-
-<select class="border rounded status">
-
-<option ${t.status=="Incomplete"?"selected":""}>Incomplete</option>
-<option ${t.status=="In Progress"?"selected":""}>In Progress</option>
-<option ${t.status=="Needs Action"?"selected":""}>Needs Action</option>
-<option ${t.status=="Completed"?"selected":""}>Completed</option>
-
-</select>
-
-<select class="border rounded priority">
-
-<option ${t.priority=="Low"?"selected":""}>Low</option>
-<option ${t.priority=="Medium"?"selected":""}>Medium</option>
-<option ${t.priority=="High"?"selected":""}>High</option>
-
-</select>
-
-<input type="date" value="${t.due}" class="border rounded">
-
-</div>
-
-<button class="bg-red-500 text-white px-2 py-1 mt-2 rounded delete">
-Delete
-</button>
-
-`
-
-let inputs=card.querySelectorAll("input")
-let selects=card.querySelectorAll("select")
-
-inputs[0].onchange=e=>{
-t.task=e.target.value
-save()
-}
-
-inputs[1].onchange=e=>{
-t.due=e.target.value
-save()
-}
-
-selects[0].onchange=e=>{
-t.status=e.target.value
-save()
-render()
-}
-
-selects[1].onchange=e=>{
-t.priority=e.target.value
-save()
-}
-
-card.querySelector(".delete").onclick=()=>{
-tasks=tasks.filter(x=>x.id!=t.id)
-save()
-render()
-}
-
-card.addEventListener("dragstart",e=>{
-e.dataTransfer.setData("id",t.id)
-})
-
-return card
-
-}
-
+// ===== RENDER =====
 function render(){
+  listView.innerHTML='';
+  document.querySelectorAll(".column").forEach(c=>c.innerHTML=`<h2 class="font-bold mb-2">${c.dataset.status}</h2>`);
+  const s = document.getElementById("search").value.toLowerCase();
+  tasks.filter(t=>t.tab===currentTab)
+       .filter(t=>t.task.toLowerCase().includes(s) && (document.getElementById("filter").value==="All" || t.status===document.getElementById("filter").value))
+       .sort((a,b)=>{
+         const p={"High":1,"Medium":2,"Low":3};
+         if(p[a.priority]!==p[b.priority]) return p[a.priority]-p[b.priority];
+         if(!a.due) return 1; if(!b.due) return -1;
+         return new Date(a.due)-new Date(b.due);
+       })
+       .forEach(t=>{
+         const card=document.createElement("div");
+         card.className="task bg-white p-3 rounded shadow mb-2";
+         card.draggable=true; card.dataset.id=t.id;
+         card.innerHTML=`
+         <input value="${t.task}" class="border rounded px-2 py-1 w-full mb-1">
+         <div class="grid grid-cols-4 gap-1 text-sm">
+           <select class="border rounded status">
+             <option ${t.status=="Incomplete"?"selected":""}>Incomplete</option>
+             <option ${t.status=="In Progress"?"selected":""}>In Progress</option>
+             <option ${t.status=="Needs Action"?"selected":""}>Needs Action</option>
+             <option ${t.status=="Completed"?"selected":""}>Completed</option>
+           </select>
+           <select class="border rounded priority">
+             <option ${t.priority=="Low"?"selected":""}>Low</option>
+             <option ${t.priority=="Medium"?"selected":""}>Medium</option>
+             <option ${t.priority=="High"?"selected":""}>High</option>
+           </select>
+           <input type="date" value="${t.due}" class="border rounded">
+           <select class="border rounded moveTab">
+             <option ${t.tab=="Today"?"selected":""}>Today</option>
+             <option ${t.tab=="Tomorrow"?"selected":""}>Tomorrow</option>
+             <option ${t.tab=="Next Week"?"selected":""}>Next Week</option>
+           </select>
+         </div>
+         <input value="${t.notes}" placeholder="Notes..." class="border rounded px-2 py-1 mt-1 w-full">
+         <button class="bg-red-500 text-white px-2 py-1 mt-2 rounded delete">Delete</button>
+         `;
 
-listView.innerHTML=""
-document.querySelectorAll(".column").forEach(c=>{
-c.innerHTML=`<h2 class="font-bold mb-2">${c.dataset.status}</h2>`
-})
+         const inputs=card.querySelectorAll("input");
+         const selects=card.querySelectorAll("select");
 
-let s=search.value.toLowerCase()
+         inputs[0].onchange=e=>{ t.task=e.target.value; saveTasks();}
+         inputs[1].onchange=e=>{ t.due=e.target.value; saveTasks(); render();}
+         inputs[2].onchange=e=>{ t.notes=e.target.value; saveTasks();}
+         selects[0].onchange=e=>{ t.status=e.target.value; saveTasks(); render();}
+         selects[1].onchange=e=>{ t.priority=e.target.value; saveTasks(); render();}
+         selects[2].onchange=e=>{ t.tab=e.target.value; saveTasks(); render();}
 
-tasks
-.filter(t=>{
+         card.querySelector(".delete").onclick=()=>{ tasks=tasks.filter(x=>x.id!=t.id); saveTasks(); render(); }
+         card.addEventListener("dragstart", e=> e.dataTransfer.setData("id", t.id));
 
-let searchMatch=t.task.toLowerCase().includes(s)
-let filterMatch=filter.value=="All" || t.status==filter.value
-
-return searchMatch && filterMatch
-
-})
-.forEach(t=>{
-
-let card=createTaskCard(t)
-
-if(boardMode){
-
-let col=document.querySelector(`[data-status="${t.status}"]`)
-col.appendChild(card)
-
-}
-else{
-
-listView.appendChild(card)
-
-}
-
-})
-
-}
-
-function toggleView(){
-
-boardMode=!boardMode
-
-if(boardMode){
-
-listView.classList.add("hidden")
-boardView.classList.remove("hidden")
-
-}
-else{
-
-boardView.classList.add("hidden")
-listView.classList.remove("hidden")
-
-}
-
-render()
-
-}
-
-function toggleDark(){
-
-let body=document.getElementById("body")
-
-body.classList.toggle("bg-slate-900")
-body.classList.toggle("bg-slate-100")
-
+         if(boardMode){ document.querySelector(`[data-status="${t.status}"]`).appendChild(card); }
+         else{ listView.appendChild(card); }
+       });
 }
 
+// ===== ADD TASK =====
+function addTask(){
+  const newTask={id:Date.now(), tab:currentTab, task:"New Task", status:"Incomplete", priority:"Low", due:"", notes:""};
+  tasks.push(newTask); saveTasks(); render();
+}
+
+// ===== TOGGLE =====
+function toggleView(){ boardMode=!boardMode; listView.classList.toggle("hidden"); boardView.classList.toggle("hidden"); render();}
+function toggleDark(){ document.getElementById("body").classList.toggle("bg-slate-900"); document.getElementById("body").classList.toggle("bg-slate-100");}
+
+// ===== SWITCH TAB =====
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  Array.from(document.querySelectorAll(".tab-btn")).find(b=>b.textContent===tab).classList.add("active");
+  render();
+}
+
+// ===== DRAG & DROP =====
 document.querySelectorAll(".column").forEach(col=>{
+  col.addEventListener("dragover", e=>e.preventDefault());
+  col.addEventListener("drop", e=>{
+    const id=e.dataTransfer.getData("id");
+    const task=tasks.find(t=>t.id==id);
+    task.status=col.dataset.status; saveTasks(); render();
+  });
+});
 
-col.addEventListener("dragover",e=>e.preventDefault())
+// ===== SEARCH / FILTER =====
+document.getElementById("search").oninput=render;
+document.getElementById("filter").onchange=render;
 
-col.addEventListener("drop",e=>{
-
-let id=e.dataTransfer.getData("id")
-
-let task=tasks.find(t=>t.id==id)
-
-task.status=col.dataset.status
-
-save()
-render()
-
-})
-
-})
-
-search.oninput=render
-filter.onchange=render
-
-render()
-
+// ===== INITIAL =====
+render();
 </script>
-
 </body>
 </html>
